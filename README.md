@@ -217,6 +217,8 @@ You will also find a device called 'Comfort Bridge', this element is the receive
 
 Newly discovered devices will take a few minutes to receive an update from the alarm, once they have properly subscribed, events should be received in near real time (within <1 sec)
 
+These notes do not include configuring the software to restart on reboot - this is left as an exercise for the reader (I may add notes later, pm2 is your friend)
+
 
 	
 
