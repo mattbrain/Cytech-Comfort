@@ -19,6 +19,8 @@
  *     Martin Lasak (martin.lasak@fokus.fraunhofer.de)
  *     Alexander Futasz (alexander.futasz@fokus.fraunhofer.de)
  *
+ * Modified by Matt Brain (matt.brain@gmail.com)
+ *		https://github.com/mattbrain/Cytech-Comfort
  ******************************************************************************/
 
 var upnp = require("peer-upnp");
