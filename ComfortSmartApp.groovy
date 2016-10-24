@@ -22,7 +22,7 @@ definition(
 preferences {
 	page(name: "searchTargetSelection", title: "UPnP Search Target", nextPage: "deviceDiscovery") {
 		section("Search Target") {
-			input "searchTarget", "string", title: "Search Target", defaultValue: "urn:www.cytech.com:service:zone:1", required: true
+			input "searchTarget", "string", title: "Search Target", defaultValue: "urn:www.cytech.com:service", required: true
 		}
 	}
 	page(name: "deviceDiscovery", title: "UPnP Device Setup", content: "deviceDiscovery")
@@ -47,7 +47,7 @@ def deviceDiscovery() {
 
 	return dynamicPage(name: "deviceDiscovery", title: "Discovery Started!", nextPage: "", refreshInterval: 5, install: true, uninstall: true) {
 		section("Please wait while we discover your Cytech Comfort UPnP Devices. Discovery can take five minutes or more, so sit back and relax! Select your device below once discovered.") {
-			input "selectedDevices", "enum", required: false, title: "Select Devices (${options.size() ?: 0} found)", multiple: true, options: options
+			input "selectedDevices", "enum", required: false, title: "Select Devices (${options.size() ?: 0} found)", submitOnChange: true, multiple: true, options: options
 		}
 	}
 }
