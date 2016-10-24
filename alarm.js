@@ -275,7 +275,7 @@ function Output(zone, zonedata) {
 	if (zone<=alarmConfig.getMaxOutputs()) {
 		active = true;
 	} else if (zone>96) {
-		if ((zone-128)<alarmConfig.getSCSRIO()*8) {
+		if ((zone-128)<=alarmConfig.getSCSRIO()*8) {
 			active = true;
 		}
 
