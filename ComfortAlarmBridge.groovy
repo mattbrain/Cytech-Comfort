@@ -13,6 +13,7 @@ metadata {
  
  		capability "Sensor"
         capability "Polling"
+        capability "Refresh"
  
         attribute "throughput", "number"
 		attribute "status", "enum", ["online", "offline", "unknown"]
@@ -40,16 +41,32 @@ metadata {
                     ]
               	)
  		}
+        standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
+            state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
+        }
 		main ('throughput')
-		details ('throughput')
+		details ('throughput','refresh')
 	}
 }
 
 
 def initialize(){
 	log.debug "Initialising"
-    runEvery5Minutes(updateCounter)
+    schedule("5 0/1 * * * ?",updateCounter)
 }
+
+void refresh() {
+	parent.renewSubscriptions()
+	updateCounter()
+	schedule("5 0/1 * * * ?",updateCounter)    
+}
+
+
+void renewSubscription() {
+	log.debug "Subscription Renewal"
+    // nothing to do here for Comfort Bridge
+}
+
 
 
 // parse events into attributes
@@ -151,4 +168,3 @@ private getSIDFromHeader(header) {
 	}
     return sid
 }
-
