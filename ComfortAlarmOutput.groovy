@@ -109,9 +109,13 @@ def parse(String description) {
         }
         updateDataValue("lastSIDTime",Long.toString(now()))
     } else if (getHTTPStatusFromHeader(headerString)!="200") {
-    	log.debug "HTTP Error in parse ${getHTTPStatusFromHeader(headerString)}"
-    	updateDataValue("sid","")
-        sendEvent(name: "switch", value: "offline", descriptionText: "Subscription Error")
+    	if (getDataValue("unsubscribe")) {
+        	updateDataValue("unsubscribe","")
+        } else {
+    		log.debug "HTTP Error in parse ${getHTTPStatusFromHeader(headerString)}"
+    		updateDataValue("sid","")
+        	sendEvent(name: "switch", value: "offline", descriptionText: "Subscription Error")
+        }
     }
 }
 
@@ -142,7 +146,8 @@ def processEvent(sid, item, value) {
             sendEvent(name: "maker", value: value, descriptionText: "Maker is ${value}")
        }
     } else {
-    	log.debug "->process event with incorrect sid, ignoring"
+    	log.debug "->process event with incorrect sid, unsubscribing"
+        upnpunsubscribe(sid)
 	}
 } 
 
@@ -152,11 +157,13 @@ void subscribe() {
     	{lastSIDTime = Long.parseLong(getDataValue("lastSIDTime"))}
     log.debug "->subscribe(), last subscription acknowledge ${(now() - lastSIDTime)/1000} seconds ago"
     
-	if ((now() - lastSIDTime) > 900000) {
+	if ((now() - lastSIDTime) > 604800000) {
     	// previous SID has expired, request new one
         log.debug("Clearing out expired subscription")
 		updateDataValue("sid","")
         sendEvent(name: "switch", value: "offline", descriptionText: "Subscription Expired")
+   		// update schedule
+        schedule("10 0/5 * * * ?",subscribe) 
     }
 	def address = getCallBackAddress()
     def headers
@@ -165,7 +172,7 @@ void subscribe() {
         headers = [
         	HOST: getDataValue("ip") + ":" + getDataValue("port"),
 			SID: getDataValue("sid"),
-            TIMEOUT: "Second-900"
+            TIMEOUT: "Second-604800"
            ]
     		
     } else {
@@ -175,9 +182,9 @@ void subscribe() {
         	HOST: getDataValue("ip") + ":" + getDataValue("port"),
             CALLBACK: "<http://${address}/notify/${this.device.deviceNetworkId}>",
             NT: "upnp:event",
-            TIMEOUT: "Second-900"
+            TIMEOUT: "Second-604800"
            ]
-           sendEvent(name: "motion", value: "offline", descriptionText: "Subscription Requested")
+           sendEvent(name: "switch", value: "offline", descriptionText: "Subscription Requested")
     }
     def action = new physicalgraph.device.HubAction(
     	method: "SUBSCRIBE",
@@ -185,13 +192,24 @@ void subscribe() {
         headers: headers
     )
     def result = sendHubCommand(action)
-    log.debug "SUBSCRIBE ${suburl}: ${action}: ${result}"
-    runEvery5Minutes("subscribe")
+    log.debug "SUBSCRIBE ${suburl}: ${action}: ${result}" 
 }
 
-def unsubscribe() {
-	log.debug "->Unsubscribe() - to be completed"
+def upnpunsubscribe(sid) {
+	log.debug "->Unsubscribing ${sid}"
+    def headers = [
+    HOST: getDataValue("ip") + ":" + getDataValue("port"),
+	SID: sid
+    ]
+    def action = new physicalgraph.device.HubAction(
+    	method: "UNSUBSCRIBE",
+        path: getDataValue("subURL"),
+        headers: headers
+    )
+    def result = sendHubCommand(action)
+    updateDataValue("unsubscribe", "true")
 }
+
 def setOffline() {
     sendEvent(name: "switch", value: "offline", descriptionText: "The device is offline")
 }
@@ -283,7 +301,19 @@ void makerToggle() {
 	//sendEvent(name: "maker", value: "pending", descriptionText: "Waiting for a response from the device", displayed: true)
 }
 
-void 
+void refresh() {
+	log.debug "Manual Subscription renewal"
+    renewSubscription() 
+}
+
+
+void renewSubscription() {
+	log.debug "Subscription Renewal"
+    updateDataValue("sid","")
+    subscribe()
+    schedule("10 0/5 * * * ?",subscribe) 
+}
+
 
 void updateMakerTile() {
 	//sendEvent(name: "maker", value: "pending", descriptionText: "Waiting for a response from the device")

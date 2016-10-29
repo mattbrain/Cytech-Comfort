@@ -240,6 +240,12 @@ private String convertHexToIP(hex) {
 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
 }
 
+void renewSubscriptions() {
+	log.debug "Subscription renewal requested"
+    getChildDevices().each {
+    	it.renewSubscription()
+    }
+}
 void processEvent(childId, sid, item, value)	{
 	log.debug "->processEvent ${childId}, ${item}, ${value}"
 	def childDevice = getChildDevices()?.find { it.deviceNetworkId == childId }
