@@ -26,12 +26,17 @@ metadata {
         command "flash"
         command "flashOnce"
         command "toggle"
+        command "doOn"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 
+	preferences {
+    	input name: "onAction", type: "enum", title: "On Action", options: ["Turn On", "Flash Once", "Flash Continually"], description: "Enter On Action", required: true
+	}
+    
 	tiles (scale: 2) {
   		 multiAttributeTile(name:"rich-control", type: "switch", canChangeIcon: true){
             tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
@@ -59,7 +64,7 @@ metadata {
             state "default", label:"Refresh", action:"refresh", icon:"st.secondary.refresh"
         }
         standardTile("on", "device.switchon", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Turn On", action:"on", icon:"st.illuminance.illuminance.light"
+            state "default", label:"Turn On", action:"doOn", icon:"st.illuminance.illuminance.light"
         }
         standardTile("off", "device.switchoff", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Turn Off", action:"off", icon:"st.illuminance.illuminance.dark"
@@ -268,7 +273,26 @@ private getHTTPStatusFromHeader(header) {
 
 void on() {
 	log.debug "->SwitchOn()"
-    doAction("SetStatus",[NewStatusValue:1])
+    log.debug "On Action: ${onAction}"
+    if (onAction) {
+    	if (onAction == "Flash Once") {
+        	log.debug "Flash Once"
+        	flashOnce();
+        } else if (onAction == "Flash Continually") {
+        	log.debug "Flashing Continually"
+        	flash() 
+        } else {
+        	log.debug "Turning On"
+        	doOn()
+        }
+    } else {
+    	log.debug "Default On"
+    	doOn()
+	}
+}
+
+void doOn() {
+	doAction("SetStatus",[NewStatusValue:1])
 }
 
 void off() {
