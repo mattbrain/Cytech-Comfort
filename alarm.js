@@ -60,7 +60,8 @@ alarm.connect(config["port"],config["host"],config["user"]);
 
 // Comfort Objects
 function Zone(zone, zonedata) {
-	var active = ((zonedata.VirtualInput == "true") || (zone <= alarmConfig.getMaxZones()));
+	var active = true;
+	//var active = ((zonedata.VirtualInput == "true") || (zone <= alarmConfig.getMaxZones()));
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Zone",zone, zone, active, zonedata.Name);
 	var thisZone = this;	
@@ -249,7 +250,7 @@ function Zone(zone, zonedata) {
 		debug("Maker = " + _service.get("Maker"));
 		if (_service.get("Maker")===1) {
 			debug("")
-			sendIFTTT("Test",_service,get("Zone"),new Date(_DateUpdated).toISOString());
+			sendIFTTT("Zone",_service,get("Zone"),new Date(_DateUpdated).toISOString());
 		}
 	}
 	
@@ -271,7 +272,9 @@ function Zone(zone, zonedata) {
 }
 
 function Output(zone, zonedata) {
-	var active=false;
+	
+	var active=true;
+	/*var active=false;
 	if (zone<=alarmConfig.getMaxOutputs()) {
 		active = true;
 	} else if (zone>96) {
@@ -279,7 +282,7 @@ function Output(zone, zonedata) {
 			active = true;
 		}
 
-	}
+	}*/
 
 	var thisZone = this;
 	var _DateUpdated = Date.now();
@@ -381,7 +384,7 @@ function Output(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status") + " silently");
+		debug("Setting Output " + _service.get("Zone") + " to " + _service.get("Status") + " silently");
 	}
 		
 	this.setState = function setState(State) {
@@ -389,11 +392,11 @@ function Output(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status"));
+		debug("Setting Output " + _service.get("Zone") + " to " + _service.get("Status"));
 		debug("Maker = " + _service.get("Maker"));
 		if (_service.get("Maker")===1) {
 			debug("")
-			sendIFTTT("Test",_service,get("Zone"),new Date(_DateUpdated).toISOString());
+			sendIFTTT("Output",_service,get("Zone"),new Date(_DateUpdated).toISOString());
 		}
 	}
 	
@@ -422,28 +425,21 @@ function Output(zone, zonedata) {
 	//}
 }
 
-function Counter(zone, zonedata) {
-	var active=false;
-	if (zone<=alarmConfig.getMaxOutputs()) {
-		active = true;
-	} else if (zone>96) {
-		if ((zone-128)<=alarmConfig.getSCSRIO()*8) {
-			active = true;
-		}
+function Counter(counter, counterdata) {
+	var active=true;
 
-	}
 
-	var thisZone = this;
+	var thisCounter = this;
 	var _DateUpdated = Date.now();
-	var _device = new UPNPService("Output",zone, zone+400, active, zonedata.Name);	
+	var _device = new UPNPService("Counter",counter, counter+400, active, counterdata.Name);	
 	var _service = _device.createService({
 		domain: "www.cytech.com",
-		type: "output",
-		serviceId: "output", 
+		type: "counter",
+		serviceId: "counter", 
 		version: "1",
 		implementation: {
-			GetZone: function(inputs){
-				return {RetZoneValue: this.get("Zone")}
+			GetCounter: function(inputs){
+				return {RetCounterValue: this.get("Counter")}
 			},
 			GetMaker: function(inputs){
 				return {RetMakerValue: this.get("Maker")}
@@ -462,15 +458,15 @@ function Counter(zone, zonedata) {
 			},
 			SetStatus: function(inputs){
 				debug("Status Value Set");
-				thisZone.requestState(inputs.NewStatusValue);
+				thisCounter.requestState(inputs.NewStatusValue);
 			}
 
 		},
 		description: {
 			actions: {
-				GetZone: {
+				GetCounter: {
 					outputs: {
-						RetZoneValue: "Zone"
+						RetCounterValue: "Counter"
 					}
 				},
 				GetMaker: {
@@ -499,21 +495,21 @@ function Counter(zone, zonedata) {
 					}
 				}	
 			},	
-			variables: {Zone: "int", Status: "boolean", Maker: "boolean", Active: "boolean", }	
+			variables: {Counter: "int", Status: "boolean", Maker: "boolean", Active: "boolean", }	
 		}	 
 	});
-	debug("Setting up output zone:" + zone);
+	debug("Setting up counter:" + counter);
 	_service.set("Status",0);
-	_service.set("Zone",zone);
+	_service.set("Counter",counter);
 	_service.set("Active",false);
 	_service.set("Maker",0);
 
-	this.getZone = function getZone() {
-		return _service.get("Zone");
+	this.getCounter = function getCounter() {
+		return _service.get("Counter");
 	}
 	
-	this.setZone = function setZone(Zone) {
-		_service.set("Zone",Zone);
+	this.setCounter = function setCounter(counter) {
+		_service.set("Counter",counter);
 	}
 	
 	this.getState = function getState() {
@@ -521,9 +517,10 @@ function Counter(zone, zonedata) {
 	}
 
 	this.requestState = function requestState(state){
-		var _zone = toHexByte(zone)
-		debug ("->this.requestState:" + state + "for zone:" + _zone);
-		var commandString = "O!" + _zone + "0" + state;
+		var _counter = toHexByte(counter)
+		var _state = toHexByte(parseInt(state))
+		debug ("->this.requestState:" + state + "for counter:" + _counter);
+		var commandString = "C!" + _counter + _state;
 		debug("Sending " + commandString + "to alarm");
 		alarm.sendCommand(commandString);
 	}
@@ -533,7 +530,7 @@ function Counter(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status") + " silently");
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status") + " silently");
 	}
 		
 	this.setState = function setState(State) {
@@ -541,11 +538,11 @@ function Counter(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status"));
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status"));
 		debug("Maker = " + _service.get("Maker"));
 		if (_service.get("Maker")===1) {
 			debug("")
-			sendIFTTT("Test",_service,get("Zone"),new Date(_DateUpdated).toISOString());
+			sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
 		}
 	}
 	
@@ -772,13 +769,24 @@ function Comfort() {
 				break;
 			case 'C?':
 				// Counter value Reply to C? Request
+				var counter = parseInt(value.substring(0,2),16);
+				var countervalue = parseInt(value.substring(2,4),16);
+				if (_counters[counter]) {
+					_counters[counter].setState(countervalue);
+				}
+				break;
 				break;
 			case 'CI':
 				// Learned IR code data reply
 				break;
 			case 'CT':
 				// counter changed report
-				// counters[new Buffer(value.substring(0,2),'hex')[0]] = new Buffer(value.substring(2),'hex')[0];
+				var counter = parseInt(value.substring(0,2),16);
+				var countervalue = parseInt(value.substring(2,4),16);
+				debug("Counter Value = " + value.substring(2,4) + ":" + countervalue);
+				if (_counters[counter]) {
+					_counters[counter].setState(countervalue);
+				}
 				break;
 			case 'cm':
 				// Control Menu reply and report
@@ -959,6 +967,12 @@ function Comfort() {
 				case 8:
 					client.write(stx + 'z?' + etx);
 					break;
+				case 9:
+					for (var counter = 0;counter <= _maxcounters;counter++) {
+						if (_counters[counter]) {
+							client.write(stx + "C?" + toHexByte(counter) + etx);
+						}
+					}
 				default:
 					poll_state = 0;
 					poll = false;
