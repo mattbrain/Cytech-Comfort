@@ -61,7 +61,7 @@ alarm.connect(config["port"],config["host"],config["user"]);
 // Comfort Objects
 function Zone(zone, zonedata) {
 	var active = true;
-	//var active = ((zonedata.VirtualInput == "true") || (zone <= alarmConfig.getMaxZones()));
+
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Zone",zone, zone, active, zonedata.Name);
 	var thisZone = this;	
@@ -270,20 +270,9 @@ function Zone(zone, zonedata) {
 		return _service.get("Maker");
 	}
 }
-
 function Output(zone, zonedata) {
 	
 	var active=true;
-	/*var active=false;
-	if (zone<=alarmConfig.getMaxOutputs()) {
-		active = true;
-	} else if (zone>96) {
-		if ((zone-128)<=alarmConfig.getSCSRIO()*8) {
-			active = true;
-		}
-
-	}*/
-
 	var thisZone = this;
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Output",zone, zone+100, active, zonedata.Name);	
@@ -344,7 +333,7 @@ function Output(zone, zonedata) {
 						NewMakerValue: "Maker"
 					}
 				},
-				SetZone: {
+				SetStatus: {
 					inputs: {
 						NewStatusValue: "Status"
 					}
@@ -424,11 +413,8 @@ function Output(zone, zonedata) {
 
 	//}
 }
-
 function Counter(counter, counterdata) {
 	var active=true;
-
-
 	var thisCounter = this;
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Counter",counter, counter+400, active, counterdata.Name);	
@@ -489,7 +475,7 @@ function Counter(counter, counterdata) {
 						NewMakerValue: "Maker"
 					}
 				},
-				SetZone: {
+				SetStatus: {
 					inputs: {
 						NewStatusValue: "Status"
 					}
@@ -570,7 +556,145 @@ function Counter(counter, counterdata) {
 
 	//}
 }
+function Flag(flag, flagdata) {
+	var active=true;
+	var thisFlag = this;
+	var _DateUpdated = Date.now();
+	var _device = new UPNPService("Flag",flag, counter+700, active, flagdata.Name);	
+	var _service = _device.createService({
+		domain: "www.cytech.com",
+		type: "flag",
+		serviceId: "flag", 
+		version: "1",
+		implementation: {
+			GetCounter: function(inputs){
+				return {RetFlagValue: this.get("Flag")}
+			},
+			GetMaker: function(inputs){
+				return {RetMakerValue: this.get("Maker")}
+			},
+			GetStatus: function(inputs){
+				return {RetStatusValue: this.get("Status")}
+			},
+			GetActive: function(inputs){
+				return {RetActiveValue: this.get("Active")}
+			},
+			SetMaker: function(inputs){
+				debug("Maker Value Set");
+				this.set("Maker", inputs.NewMakerValue);
+				this.notify("Maker");
+				
+			},
+			SetStatus: function(inputs){
+				debug("Status Value Set");
+				thisFlag.requestState(inputs.NewStatusValue);
+			}
 
+		},
+		description: {
+			actions: {
+				GetFlag: {
+					outputs: {
+						RetCounterValue: "Flag"
+					}
+				},
+				GetMaker: {
+					outputs: {
+						RetMakerValue: "Maker"
+					}
+				},
+				GetStatus: {
+					outputs: {
+						RetStatusValue: "Status"
+					}
+				},
+				GetActive: {
+					outputs: {
+						RetActiveValue: "Active"
+					}
+				},				
+				SetMaker: {
+					inputs: {
+						NewMakerValue: "Maker"
+					}
+				},
+				SetStatus: {
+					inputs: {
+						NewStatusValue: "Status"
+					}
+				}	
+			},	
+			variables: {Flag: "boolean", Status: "boolean", Maker: "boolean", Active: "boolean", }	
+		}	 
+	});
+	debug("Setting up counter:" + counter);
+	_service.set("Status",0);
+	_service.set("Flag",flag);
+	_service.set("Active",false);
+	_service.set("Maker",0);
+
+	this.getFlag = function getFlag() {
+		return _service.get("Flag");
+	}
+	
+	this.setFlag = function setFlag(flag) {
+		_service.set("Flag",flag);
+	}
+	
+	this.getState = function getState() {
+		return _service.get("Status");
+	}
+
+	this.requestState = function requestState(state){
+		var _flag = toHexByte(flag);
+		var _state = "00"
+		if (state=="1") {
+			_state = "01"
+		}
+		debug ("->this.requestState:" + state + "for flag:" + _counter);
+		var commandString = "F!" + _counter + _state;
+		debug("Sending " + commandString + "to alarm");
+		alarm.sendCommand(commandString);
+	}
+
+	this.setStateSilent = function setStateSilent(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Flag " + _service.get("Flag") + " to " + _service.get("Status") + " silently");
+	}
+		
+	this.setState = function setState(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Flag " + _service.get("Flag") + " to " + _service.get("Status"));
+		debug("Maker = " + _service.get("Maker"));
+		if (_service.get("Maker")===1) {
+			debug("")
+			sendIFTTT("Flag",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+		}
+	}
+	
+	this.getDateUpdated = function getDateUpdated () {
+		return _DateUpdated;
+	}
+	
+	this.setMaker = function setMaker(maker) {
+		if (maker===true) {
+			_service.set("Maker",1);
+		} else {
+			_service.set("Maker",0);
+		}
+	}
+	
+	this.getMaker = function getMaker() {
+		return _service.get("Maker");
+	}
+
+}
 // Comfort Main
 function Comfort() {
 	var thisAlarm = this;
@@ -614,6 +738,15 @@ function Comfort() {
 			_counters[counter] = new Counter(counter, alarmConfig.getCounter(counter));
 		} else {
 			_counters[counter] = null;
+		}
+	}
+
+	// Init Flags
+	for (var flag = 1;flag <= _maxflags;flag++) {
+		if (_flagarray.indexOf(flag.toString())>-1) {
+			_flags[flag] = new Flag(flag, alarmConfig.getFlag(flag));
+		} else {
+			_flags[flag] = null;
 		}
 	}
 
@@ -775,7 +908,6 @@ function Comfort() {
 					_counters[counter].setState(countervalue);
 				}
 				break;
-				break;
 			case 'CI':
 				// Learned IR code data reply
 				break;
@@ -817,9 +949,30 @@ function Comfort() {
 				break;
 			case 'F?':
 				// reply to Flag Request
+				var flag = parseInt(value.substring(0,2),16);
+				var flagvalue = parseInt(value.substring(2),16);
+				if (_flags[flag]) {
+					_flags[flag].setStatus(flagvalue);
+				}
+				break;
+			case 'FL':
+				// flag status report
+				var flag = parseInt(value.substring(0,2),16);
+				var flagvalue = parseInt(value.substring(2),16);
+				if (_flags[flag]) {
+					_flags[flag].setStatus(flagvalue);
+				}
 				break;
 			case 'id':
 				// reply to ID command
+				break;
+			case 'I?':
+				//input activation report
+				var zone = parseInt(value.substring(0,2),16);
+				var zonevalue = parseInt(value.substring(2),16);
+				if (_zones[zone]) {
+					_zones[zone].setState(zonevalue);
+				}
 				break;
 			case 'IP':
 				//input activation report
@@ -947,7 +1100,12 @@ function Comfort() {
 					client.write(stx + 'b?' + etx);
 					break;
 				case 2:
-					client.write(stx + 'f?'  + etx);
+					//client.write(stx + 'f?'  + etx);
+					for (var flag = 1; flag <= _maxflags;flag++) {
+						if (_flags[flag]) {
+							client.write(stx + "F?" + toHexByte(flag) + etx);
+						}
+					}
 					break;
 				case 3:
 					client.write(stx + 'r?000016' + etx);
@@ -1139,7 +1297,7 @@ function ComfortConfiguration(filename) {
 		var result = null
 		comfortjs.Configuration.Zones[0].Zone.forEach(function (item) {
 			if (parseInt(item.$.Number) == zone) {
-				debug ("Requested " + zone + ", sent " + item.$.Number)
+				debug ("Requested Zone " + zone + ", sent " + item.$.Number)
 				result = item.$;
 		}})
 		return result;        
@@ -1149,7 +1307,7 @@ function ComfortConfiguration(filename) {
 		var result = null
 		comfortjs.Configuration.Outputs[0].Output.forEach(function (item) {
 			if (parseInt(item.$.Number) == output) {
-				debug ("Requested " + output + ", sent " + item.$.Number)
+				debug ("Requested Output " + output + ", sent " + item.$.Number)
 				result =  item.$;
 		}})	
 		return result;
@@ -1159,11 +1317,23 @@ function ComfortConfiguration(filename) {
 		var result = null
 		comfortjs.Configuration.Counters[0].Counter.forEach(function (item) {
 			if (parseInt(item.$.Number) == counter) {
-				debug ("Requested " + counter + ", sent " + item.$.Number)
+				debug ("Requested Counter " + counter + ", sent " + item.$.Number)
 				result =  item.$;
 		}})	
 		return result;
 	}
+
+	this.getFlag = function getFlag(flag){
+		var result = null
+		comfortjs.Configuration.Flags[0].Flag.forEach(function (item) {
+			if (parseInt(item.$.Number) == flag) {
+				debug ("Requested Flag " + flag + ", sent " + item.$.Number)
+				result =  item.$;
+		}})	
+		return result;
+	}
+
+
 }
 
 function debug (message, severity) {
