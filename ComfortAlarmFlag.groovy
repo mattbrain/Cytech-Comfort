@@ -1,6 +1,6 @@
 /**
  *
- * UPNP Comfort Alarm Output Interface
+ * UPNP Comfort Alarm Flag Interface
  * Copyright Matt Brain (matt.brain@gmail.com)
  * https://github.com/mattbrain/Cytech-Comfort
  *
@@ -8,7 +8,7 @@
  *
  */
 metadata {
-	definition (name: "ComfortAlarm Output", namespace: "mattbrain", author: "Matt Brain") {
+	definition (name: "ComfortAlarm Flag", namespace: "mattbrain", author: "Matt Brain") {
     	capability "Actuator"
     	capability "Switch"
         capability "Refresh"
@@ -23,30 +23,23 @@ metadata {
         command "makerToggle"
         command "on"
         command "off"
-        command "flash"
-        command "flashOnce"
         command "toggle"
-        command "doOn"
 	}
 
 	simulator {
 		// TODO: define status and reply messages here
 	}
 
-	preferences {
-    	input name: "onAction", type: "enum", title: "On Action", options: ["Turn On", "Flash Once", "Flash Continually"], description: "Enter On Action", required: true
-	}
     
 	tiles (scale: 2) {
-  		 multiAttributeTile(name:"rich-control", type: "switch", canChangeIcon: true){
+  		multiAttributeTile(name:"rich-control", type: "switch", canChangeIcon: true){
             tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
                  attributeState "on", label:'${name}', action:"off", icon:"st.illuminance.illuminance.light", backgroundColor:"#79b821", nextState:"turningOff"
                  attributeState "off", label:'${name}', action:"on", icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff", nextState:"turningOn"
                  attributeState "turningOn", label:'${name}', action:"off", icon:"st.illuminance.illuminance.light", backgroundColor:"#79b821", nextState:"turningOff"
                  attributeState "turningOff", label:'${name}', action:"on", icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff", nextState:"turningOn"
-  				 attributeState "flashing", label:'${name}', action:"off", icon:"st.illuminance.illuminance.bright", backgroundColor:"#79b821", nextState:"turningOff"
-  				 attributeState "offline", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ff0000"
-                 attributeState "unknown", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff"
+  				attributeState "offline", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ff0000"
+                attributeState "unknown", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff"
  			}
         }
 
@@ -55,8 +48,7 @@ metadata {
             state "off", label:'${name}', action:"on", icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff", nextState:"turningOn"
             state "turningOn", label:'${name}', action:"off", icon:"st.illuminance.illuminance.light", backgroundColor:"#79b821", nextState:"turningOff"
             state "turningOff", label:'${name}', action:"on", icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff", nextState:"turningOn"
-   			state "flashing", label:'${name}', action:"off", icon:"st.illuminance.illuminance.bright", backgroundColor:"#79b821", nextState:"turningOff"
-   			state "offline", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ff0000"
+    		state "offline", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ff0000"
             state "unknown", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff"
         }
 
@@ -64,16 +56,10 @@ metadata {
             state "default", label:"Refresh", action:"refresh", icon:"st.secondary.refresh"
         }
         standardTile("on", "device.switchon", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Turn On", action:"doOn", icon:"st.illuminance.illuminance.light"
+            state "default", label:"Turn On", action:"on", icon:"st.illuminance.illuminance.light"
         }
         standardTile("off", "device.switchoff", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Turn Off", action:"off", icon:"st.illuminance.illuminance.dark"
-        }
-		standardTile("flash", "device.switchflash", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Flash", action:"flash", icon:"st.illuminance.illuminance.light"
-        }
-		standardTile("flashonce", "device.switchflashonce", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Flash Once", action:"flashOnce", icon:"st.illuminance.illuminance.light"
         }
         standardTile("toggle", "device.switchflashonce", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Toggle", action:"toggle", icon:"st.illuminance.illuminance.light"
@@ -84,7 +70,7 @@ metadata {
             state("pending", label:'waiting',action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#ff0000")
         }
 		main "switch"
-		details (["rich-control", "on", "off", "flash" , "flashonce", "refresh", "maker"])
+		details (["rich-control", "on", "refresh", "maker", "off"])
 	}
 }
 
@@ -132,8 +118,6 @@ def processEvent(sid, item, value) {
         	log.debug "->processEvent: State Update"
         	if (value=="0") {
             	value="off"
-            } else if (value=="4") {
-            	value="flashing"
             } else {
             	value="on"
             }
@@ -273,44 +257,15 @@ private getHTTPStatusFromHeader(header) {
 
 void on() {
 	log.debug "->SwitchOn()"
-    log.debug "On Action: ${onAction}"
-    if (onAction) {
-    	if (onAction == "Flash Once") {
-        	log.debug "Flash Once"
-        	flashOnce();
-        } else if (onAction == "Flash Continually") {
-        	log.debug "Flashing Continually"
-        	flash() 
-        } else {
-        	log.debug "Turning On"
-        	doOn()
-        }
-    } else {
-    	log.debug "Default On"
-    	doOn()
-	}
-}
-
-void doOn() {
 	doAction("SetStatus",[NewStatusValue:1])
 }
+
 
 void off() {
 	log.debug "->SwitchOff()"
     doAction("SetStatus",[NewStatusValue:0])
 }
 
-void flash() {
-	doAction("SetStatus",[NewStatusValue:4])
-}
-
-void flashOnce() {
-	doAction("SetStatus",[NewStatusValue:3])
-}
-
-void toggle() {
-	doAction("SetStatus",[NewStatusValue:2])
-}
 
 void makerToggle() {
 	log.debug "->makerToggle"
@@ -339,15 +294,11 @@ void renewSubscription() {
 }
 
 
-void updateMakerTile() {
-	//sendEvent(name: "maker", value: "pending", descriptionText: "Waiting for a response from the device")
-}
-
 def doAction(action, Map body = [InstanceID:0, Speed:1]) {
 	log.debug "doAction ${action}, ${body}"
     def result = new physicalgraph.device.HubSoapAction(
         path:    getDataValue("controlURL"),
-        urn:     "urn:www.cytech.com:service:output:1",
+        urn:     "urn:www.cytech.com:service:flag:1",
         action:  action,
         body:    body,
         headers: [Host:getDataValue("ip") + ":" + getDataValue("port"), CONNECTION: "close"]
