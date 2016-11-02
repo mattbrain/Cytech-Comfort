@@ -560,7 +560,7 @@ function Flag(flag, flagdata) {
 	var active=true;
 	var thisFlag = this;
 	var _DateUpdated = Date.now();
-	var _device = new UPNPService("Flag",flag, counter+700, active, flagdata.Name);	
+	var _device = new UPNPService("Flag",flag, flag+700, active, flagdata.Name);	
 	var _service = _device.createService({
 		domain: "www.cytech.com",
 		type: "flag",
@@ -624,10 +624,10 @@ function Flag(flag, flagdata) {
 					}
 				}	
 			},	
-			variables: {Flag: "boolean", Status: "boolean", Maker: "boolean", Active: "boolean", }	
+			variables: {Flag: "int", Status: "boolean", Maker: "boolean", Active: "boolean", }	
 		}	 
 	});
-	debug("Setting up counter:" + counter);
+	debug("Setting up flag:" + flag);
 	_service.set("Status",0);
 	_service.set("Flag",flag);
 	_service.set("Active",false);
@@ -651,8 +651,8 @@ function Flag(flag, flagdata) {
 		if (state=="1") {
 			_state = "01"
 		}
-		debug ("->this.requestState:" + state + "for flag:" + _counter);
-		var commandString = "F!" + _counter + _state;
+		debug ("->this.requestState:" + state + "for flag:" + _flag);
+		var commandString = "F!" + _flag + _state;
 		debug("Sending " + commandString + "to alarm");
 		alarm.sendCommand(commandString);
 	}
@@ -952,7 +952,7 @@ function Comfort() {
 				var flag = parseInt(value.substring(0,2),16);
 				var flagvalue = parseInt(value.substring(2),16);
 				if (_flags[flag]) {
-					_flags[flag].setStatus(flagvalue);
+					_flags[flag].setState(flagvalue);
 				}
 				break;
 			case 'FL':
@@ -960,7 +960,7 @@ function Comfort() {
 				var flag = parseInt(value.substring(0,2),16);
 				var flagvalue = parseInt(value.substring(2),16);
 				if (_flags[flag]) {
-					_flags[flag].setStatus(flagvalue);
+					_flags[flag].setState(flagvalue);
 				}
 				break;
 			case 'id':
