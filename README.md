@@ -11,6 +11,10 @@ This repository contains the necessary files and installation notes to expose el
 
 **Little testing has been performed so far.**
 
+### Updates
+
+Please see the bottom of this document to see details of the latest changes and a change history
+
 #### If you proceed with using this software, keep in mind the following:
 
 1.	It may not work, or it may work but be unstable, just because it works for me doesn't mean it will work for you. I will endeavour to support anyone who is willing to try it, but remember I have a day job and this is something I have built because it's kinda fun.
@@ -173,7 +177,7 @@ You can stop it by using
 
 #### Install the SmartThings elements
 
-There is a SmartApp and 3 DeviceHandlers required for SmartThings to make sense of the alarm.
+There is a SmartApp and 5 DeviceHandlers required for SmartThings to make sense of the alarm.
 
 The process for installing the SmartApp and DeviceHandlers is basically the same, you will need to login to the online portal using your SmartThings credentials (for the UK the URL is :https://graph-eu01-euwest1.api.smartthings.com/)
 
@@ -193,7 +197,7 @@ From the online portal, do the following
 	
 ##### Installation of the DeviceHandlers
 
-From each of the files ComfortAlarmBridge.groovy, ComfortAlarmZone.groovy and ComfortAlarmOutput.groovy (one at a time), do the following:
+From each of the files ComfortAlarmBridge.groovy, ComfortAlarmZone.groovy, ComfortAlarmOutput.groovy, ComfortAlarmCounter.groovy and ComfortAlarmFlag.groovy (one at a time), do the following:
 
 	1.	Copy the code to the clipboard by viewing it
 	2.	Select 'My Device Handlers'
@@ -218,6 +222,31 @@ You will also find a device called 'Comfort Bridge', this element is the receive
 Newly discovered devices will take a few minutes to receive an update from the alarm, once they have properly subscribed, events should be received in near real time (within <1 sec)
 
 These notes do not include configuring the software to restart on reboot - this is left as an exercise for the reader (I may add notes later, pm2 is your friend)
+
+#### Updates
+
+**2/11/16**
+
+Added support for Counters and Flags.
+
+This update replaces the existing alarm.js and alarm.config as well as updates to all Device Handlers and the Smart App.
+
+Users of previous versions of this client will need to review and re-apply configuration changes to the alarm.config as you will now need to explicitly define each of the elements to be exposed, please see the notes within the configuration file for more information. It is highly recommended that only the devices you wish to have controlled in SmartThings are exposed in order to reduce the load on both the Pi and the UCM.
+
+To update, replace the existing alarm.js and alarm.config on the Pi and restart the client as below from the installation directory.
+
+	pm2 stop alarm
+	pm2 start alarm
+
+Existing Device Handlers and the Smart App should be overwritten by the updated content, saved and published. There is no need to remove and completely redo discovery, opening the existing SmartApp as found in Automations -> SmartApps and redoing discovery will add the new devices without messing up existing elements. Any devices not needed can be removed on a device by device basis using the preferences cog in the device details page.
+	
+Counters are represented as switches with variable levels (akin to dimmable bulbs), the On and Off function as used by other SmartApps can be configured to a set the counter to a specific value or to increment / decrement the counter in the device preferences.
+
+Outputs are represented as switches, the function of On  as exposed to other SmartApps can be configured to be On, Flash or FlashOnce in the device preferences
+
+Flags are represented as switches.
+
+Responses and Alarm state (with appropriate permissions) are in development, configuration of which can be seen in the alarm.config.
 
 
 	

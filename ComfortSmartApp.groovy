@@ -160,7 +160,11 @@ def addDevices() {
                 
                 } else if (selectedDevice.value.urn == "urn:www.cytech.com:service:output:1") {
                 	deviceType = "ComfortAlarm Output"
-                }
+                } else if (selectedDevice.value.urn == "urn:www.cytech.com:service:counter:1") {
+                	deviceType = "ComfortAlarm Counter"
+                } else if (selectedDevice.value.urn == "urn:www.cytech.com:service:flag:1") {
+                	deviceType = "ComfortAlarm Flag"
+                }    
                	if (deviceType != "None") {
                 	log.debug "Creating ${deviceType}: ${selectedDevice.value.ssdpPath}"
                 	

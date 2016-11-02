@@ -1,6 +1,6 @@
 /**
  *
- * UPNP Comfort Alarm Output Interface
+ * UPNP Comfort Alarm Counter Interface
  * Copyright Matt Brain (matt.brain@gmail.com)
  * https://github.com/mattbrain/Cytech-Comfort
  *
@@ -8,11 +8,12 @@
  *
  */
 metadata {
-	definition (name: "ComfortAlarm Output", namespace: "mattbrain", author: "Matt Brain") {
+	definition (name: "ComfortAlarm Counter", namespace: "mattbrain", author: "Matt Brain") {
     	capability "Actuator"
     	capability "Switch"
         capability "Refresh"
         capability "Sensor"
+        capability "switchLevel"
         
         attribute "currentIP", "string"
         attribute "maker", "string"
@@ -23,10 +24,10 @@ metadata {
         command "makerToggle"
         command "on"
         command "off"
-        command "flash"
-        command "flashOnce"
-        command "toggle"
         command "doOn"
+        command "doOff"
+        command "levelUp"
+        command "levelDown"
 	}
 
 	simulator {
@@ -34,10 +35,16 @@ metadata {
 	}
 
 	preferences {
-    	input name: "onAction", type: "enum", title: "On Action", options: ["Turn On", "Flash Once", "Flash Continually"], description: "Enter On Action", required: true
-	}
+    	input name: "onAction", type: "enum", title: "On Action", options: ["Set to Min", "Set to Max", "Increment", "Decrement"], description: "Enter On Action", required: true
+		input name: "offAction", type: "enum", title: "Off Action", options: ["Set to Min", "Set to Max", "Increment", "Decrement"], description: "Enter Off Action", required: true
+		input name: "minValue", type: "decimal", title: "Minimum Counter Value", description: "Enter the minimum SmartThings can set the value to", required: true
+        input name: "maxValue", type: "decimal", title: "Maximum Counter Value", description: "Enter the maximum SmartThings can set the value to", required: true
+    }
+    
     
 	tiles (scale: 2) {
+    
+    /*
   		 multiAttributeTile(name:"rich-control", type: "switch", canChangeIcon: true){
             tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
                  attributeState "on", label:'${name}', action:"off", icon:"st.illuminance.illuminance.light", backgroundColor:"#79b821", nextState:"turningOff"
@@ -49,7 +56,7 @@ metadata {
                  attributeState "unknown", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff"
  			}
         }
-
+	
         standardTile("switch", "device.switch", width: 2, height: 2, canChangeIcon: true) {
             state "on", label:'${name}', action:"off", icon:"st.illuminance.illuminance.light", backgroundColor:"#79b821", nextState:"turningOff"
             state "off", label:'${name}', action:"on", icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff", nextState:"turningOn"
@@ -59,32 +66,43 @@ metadata {
    			state "offline", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ff0000"
             state "unknown", label:'${name}', icon:"st.illuminance.illuminance.dark", backgroundColor:"#ffffff"
         }
-
-        standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
+		*/
+        multiAttributeTile(name:"valueTile", type:"generic", width:6, height:4) {
+    		tileAttribute("device.level", key: "PRIMARY_CONTROL") {
+        		attributeState "default", label:'${currentValue}' 
+            }
+    		tileAttribute("device.level", key: "VALUE_CONTROL") {
+        		attributeState "VALUE_UP", action: "levelUp"
+        		attributeState "VALUE_DOWN", action: "levelDown"
+    		}
+		}
+        
+        valueTile("valueTileMain", "device.level", decoration: "flat", width: 2, height: 2) {
+            state "level", label: '${currentValue}', icon: "st.Kids.kids6"
+        }
+        
+        standardTile("refresh", "device.refresh", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Refresh", action:"refresh", icon:"st.secondary.refresh"
         }
         standardTile("on", "device.switchon", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Turn On", action:"doOn", icon:"st.illuminance.illuminance.light"
         }
         standardTile("off", "device.switchoff", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Turn Off", action:"off", icon:"st.illuminance.illuminance.dark"
+            state "default", label:"Turn Off", action:"doOff", icon:"st.illuminance.illuminance.dark"
         }
-		standardTile("flash", "device.switchflash", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Flash", action:"flash", icon:"st.illuminance.illuminance.light"
+		standardTile("up", "device.switchflash", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
+            state "default", label:"Up", action:"levelUp", icon:"st.illuminance.illuminance.light"
         }
-		standardTile("flashonce", "device.switchflashonce", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Flash Once", action:"flashOnce", icon:"st.illuminance.illuminance.light"
-        }
-        standardTile("toggle", "device.switchflashonce", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Toggle", action:"toggle", icon:"st.illuminance.illuminance.light"
+		standardTile("down", "device.switchflashonce", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
+            state "default", label:"Down", action:"levelDown", icon:"st.illuminance.illuminance.light"
         }
         standardTile("maker", "device.maker", height: 2, width: 2, decoration: "flat") {
             state("on", label:'On', nextState: "pending", action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#00ff00")
             state("off", label:'Off', nextState: "pending", action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#ffffff")
             state("pending", label:'waiting',action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#ff0000")
         }
-		main "switch"
-		details (["rich-control", "on", "off", "flash" , "flashonce", "refresh", "maker"])
+		main "valueTileMain"
+		details (["valueTile", "on", "up", "refresh", "off" , "down",  "maker"])
 	}
 }
 
@@ -129,23 +147,13 @@ def processEvent(sid, item, value) {
 	if (sid==getDataValue("sid")) {
     	log.debug "->processEvent: Correct SID"
 		if (item == "Status") {
-        	log.debug "->processEvent: State Update"
-        	if (value=="0") {
-            	value="off"
-            } else if (value=="4") {
-            	value="flashing"
-            } else {
-            	value="on"
-            }
             log.debug "->processEvent: Setting switch to ${value}"
-    		sendEvent(name: "switch", value: value, descriptionText: "Switch is ${value}")
+    		sendEvent(name: "level", value: value, descriptionText: "Switch is ${value}")
     	} else if (item=="Maker") {
         	if (value=="0") {
-            	updateDataValue("maker","Off")
             	value="off"
             } else {
             	value="on"
-                updateDataValue("maker","On")
             }
             log.debug "->processEvent: Setting Maker to ${value}"
             sendEvent(name: "maker", value: value, descriptionText: "Maker is ${value}")
@@ -271,58 +279,103 @@ private getHTTPStatusFromHeader(header) {
     return httpStatus
 }
 
-void on() {
-	log.debug "->SwitchOn()"
-    log.debug "On Action: ${onAction}"
-    if (onAction) {
-    	if (onAction == "Flash Once") {
-        	log.debug "Flash Once"
-        	flashOnce();
-        } else if (onAction == "Flash Continually") {
-        	log.debug "Flashing Continually"
-        	flash() 
+void doButton(action) {
+
+    if (action) {
+    	if (action == "Set to Min") {
+            if (minValue) {
+                doAction("SetStatus",[NewStatusValue:minValue])           
+            } else {
+                doAction("SetStatus",[NewStatusValue:0])
+            }
+        } else if (action == "Set to Max") {
+        	if (maxValue) {
+                doAction("SetStatus",[NewStatusValue:maxValue])           
+            } else {
+                doAction("SetStatus",[NewStatusValue:255])
+            }
+        } else if (action == "Increment") {
+            levelUp();
+
+        } else if (action == "Decrement") {
+            levelDown()
         } else {
-        	log.debug "Turning On"
-        	doOn()
+            log.debug "Unable to parse action ${onAction}"
         }
     } else {
-    	log.debug "Default On"
-    	doOn()
+    	log.debug "Action not set"
 	}
 }
 
+void on() {
+    if (onAction) {
+        doButton(onAction)
+    } else {
+        doButton("Set to Max")
+    }
+}
+
 void doOn() {
-	doAction("SetStatus",[NewStatusValue:1])
+	if (maxValue) {
+		doAction("SetStatus",[NewStatusValue:maxValue])
+    } else {
+       	doAction("SetStatus",[NewStatusValue:255])
+    }
+}
+
+void doOff() {
+	if (minValue) {
+		doAction("SetStatus",[NewStatusValue:minValue])
+    } else {
+       	doAction("SetStatus",[NewStatusValue:0])
+    }
 }
 
 void off() {
-	log.debug "->SwitchOff()"
-    doAction("SetStatus",[NewStatusValue:0])
+    if (offAction) {
+        doButton(offAction)
+    } else {
+        doButton("Set to Min")
+    }
 }
 
-void flash() {
-	doAction("SetStatus",[NewStatusValue:4])
+void levelUp() {
+	def level = device.currentValue("level") + 1
+    if (maxValue) {
+        if (level > maxValue) {
+            level = maxValue;
+        } else {
+            if (level>255) {
+                level = 255;
+            }
+        }
+    }
+	doAction("SetStatus",[NewStatusValue:level])
 }
 
-void flashOnce() {
-	doAction("SetStatus",[NewStatusValue:3])
+void levelDown() {
+	def level = device.currentValue("level") - 1
+    if (minValue) {
+        if (level < minValue) {
+            level = minValue;
+        } else {
+            if (level<0) {
+                level = 0;
+            }
+        }
+    }
+	doAction("SetStatus",[NewStatusValue:level])
 }
 
-void toggle() {
-	doAction("SetStatus",[NewStatusValue:2])
-}
 
 void makerToggle() {
 	log.debug "->makerToggle"
-    //sendEvent(name: "maker", value: "on", descriptionText: "Waiting for a response from the device", displayed: true)
-	if (getDataValue("maker")=="Off") {
+	if (device.currentValue("maker")=="off") {
         doAction("SetMaker", [NewMakerValue:1])
     } else {
-    	updateDataValue("maker","Off")
         doAction("SetMaker", [NewMakerValue:0])
     }
     log.debug "Sending sendEvent"
-	//sendEvent(name: "maker", value: "pending", descriptionText: "Waiting for a response from the device", displayed: true)
 }
 
 void refresh() {
@@ -330,6 +383,10 @@ void refresh() {
     renewSubscription() 
 }
 
+void setLevel(value) {
+	log.debug "Setting Counter to " + value
+	doAction("SetCounter", [NewCounterValue:value])
+}
 
 void renewSubscription() {
 	log.debug "Subscription Renewal"
@@ -347,7 +404,7 @@ def doAction(action, Map body = [InstanceID:0, Speed:1]) {
 	log.debug "doAction ${action}, ${body}"
     def result = new physicalgraph.device.HubSoapAction(
         path:    getDataValue("controlURL"),
-        urn:     "urn:www.cytech.com:service:output:1",
+        urn:     "urn:www.cytech.com:service:counter:1",
         action:  action,
         body:    body,
         headers: [Host:getDataValue("ip") + ":" + getDataValue("port"), CONNECTION: "close"]

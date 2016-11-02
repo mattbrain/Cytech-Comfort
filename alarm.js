@@ -60,7 +60,8 @@ alarm.connect(config["port"],config["host"],config["user"]);
 
 // Comfort Objects
 function Zone(zone, zonedata) {
-	var active = ((zonedata.VirtualInput == "true") || (zone <= alarmConfig.getMaxZones()));
+	var active = true;
+
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Zone",zone, zone, active, zonedata.Name);
 	var thisZone = this;	
@@ -249,7 +250,7 @@ function Zone(zone, zonedata) {
 		debug("Maker = " + _service.get("Maker"));
 		if (_service.get("Maker")===1) {
 			debug("")
-			sendIFTTT("Test",_service,get("Zone"),new Date(_DateUpdated).toISOString());
+			sendIFTTT("Zone",_service,get("Zone"),new Date(_DateUpdated).toISOString());
 		}
 	}
 	
@@ -269,18 +270,9 @@ function Zone(zone, zonedata) {
 		return _service.get("Maker");
 	}
 }
-
 function Output(zone, zonedata) {
-	var active=false;
-	if (zone<=alarmConfig.getMaxOutputs()) {
-		active = true;
-	} else if (zone>96) {
-		if ((zone-128)<=alarmConfig.getSCSRIO()*8) {
-			active = true;
-		}
-
-	}
-
+	
+	var active=true;
 	var thisZone = this;
 	var _DateUpdated = Date.now();
 	var _device = new UPNPService("Output",zone, zone+100, active, zonedata.Name);	
@@ -341,7 +333,7 @@ function Output(zone, zonedata) {
 						NewMakerValue: "Maker"
 					}
 				},
-				SetZone: {
+				SetStatus: {
 					inputs: {
 						NewStatusValue: "Status"
 					}
@@ -381,7 +373,7 @@ function Output(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status") + " silently");
+		debug("Setting Output " + _service.get("Zone") + " to " + _service.get("Status") + " silently");
 	}
 		
 	this.setState = function setState(State) {
@@ -389,11 +381,11 @@ function Output(zone, zonedata) {
 		_service.set("Active", true);
 		_service.notify("Status");
 		_DateUpdated = Date.now();
-		debug("Setting Zone " + _service.get("Zone") + " to " + _service.get("Status"));
+		debug("Setting Output " + _service.get("Zone") + " to " + _service.get("Status"));
 		debug("Maker = " + _service.get("Maker"));
 		if (_service.get("Maker")===1) {
 			debug("")
-			sendIFTTT("Test",_service,get("Zone"),new Date(_DateUpdated).toISOString());
+			sendIFTTT("Output",_service,get("Zone"),new Date(_DateUpdated).toISOString());
 		}
 	}
 	
@@ -421,7 +413,288 @@ function Output(zone, zonedata) {
 
 	//}
 }
+function Counter(counter, counterdata) {
+	var active=true;
+	var thisCounter = this;
+	var _DateUpdated = Date.now();
+	var _device = new UPNPService("Counter",counter, counter+400, active, counterdata.Name);	
+	var _service = _device.createService({
+		domain: "www.cytech.com",
+		type: "counter",
+		serviceId: "counter", 
+		version: "1",
+		implementation: {
+			GetCounter: function(inputs){
+				return {RetCounterValue: this.get("Counter")}
+			},
+			GetMaker: function(inputs){
+				return {RetMakerValue: this.get("Maker")}
+			},
+			GetStatus: function(inputs){
+				return {RetStatusValue: this.get("Status")}
+			},
+			GetActive: function(inputs){
+				return {RetActiveValue: this.get("Active")}
+			},
+			SetMaker: function(inputs){
+				debug("Maker Value Set");
+				this.set("Maker", inputs.NewMakerValue);
+				this.notify("Maker");
+				
+			},
+			SetStatus: function(inputs){
+				debug("Status Value Set");
+				thisCounter.requestState(inputs.NewStatusValue);
+			}
 
+		},
+		description: {
+			actions: {
+				GetCounter: {
+					outputs: {
+						RetCounterValue: "Counter"
+					}
+				},
+				GetMaker: {
+					outputs: {
+						RetMakerValue: "Maker"
+					}
+				},
+				GetStatus: {
+					outputs: {
+						RetStatusValue: "Status"
+					}
+				},
+				GetActive: {
+					outputs: {
+						RetActiveValue: "Active"
+					}
+				},				
+				SetMaker: {
+					inputs: {
+						NewMakerValue: "Maker"
+					}
+				},
+				SetStatus: {
+					inputs: {
+						NewStatusValue: "Status"
+					}
+				}	
+			},	
+			variables: {Counter: "int", Status: "boolean", Maker: "boolean", Active: "boolean", }	
+		}	 
+	});
+	debug("Setting up counter:" + counter);
+	_service.set("Status",0);
+	_service.set("Counter",counter);
+	_service.set("Active",false);
+	_service.set("Maker",0);
+
+	this.getCounter = function getCounter() {
+		return _service.get("Counter");
+	}
+	
+	this.setCounter = function setCounter(counter) {
+		_service.set("Counter",counter);
+	}
+	
+	this.getState = function getState() {
+		return _service.get("Status");
+	}
+
+	this.requestState = function requestState(state){
+		var _counter = toHexByte(counter)
+		var _state = toHexByte(parseInt(state))
+		debug ("->this.requestState:" + state + "for counter:" + _counter);
+		var commandString = "C!" + _counter + _state;
+		debug("Sending " + commandString + "to alarm");
+		alarm.sendCommand(commandString);
+	}
+
+	this.setStateSilent = function setStateSilent(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status") + " silently");
+	}
+		
+	this.setState = function setState(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status"));
+		debug("Maker = " + _service.get("Maker"));
+		if (_service.get("Maker")===1) {
+			debug("")
+			sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+		}
+	}
+	
+	this.getDateUpdated = function getDateUpdated () {
+		return _DateUpdated;
+	}
+	
+	this.setMaker = function setMaker(maker) {
+		if (maker===true) {
+			_service.set("Maker",1);
+		} else {
+			_service.set("Maker",0);
+		}
+	}
+	
+	this.getMaker = function getMaker() {
+		return _service.get("Maker");
+	}
+
+	//this.requestState = function requestState(state) {
+	//	debug("Requesting "+ state + " on zone " + getZone());
+		//				var commandString = "O!" + this.get("Zone").toInt().toString(16) + "0" + inputs.NewStatusValue;
+		//				debug("Sending " + commandString + "to alarm");
+		//				alarm.sendCommand(commandString);
+
+	//}
+}
+function Flag(flag, flagdata) {
+	var active=true;
+	var thisFlag = this;
+	var _DateUpdated = Date.now();
+	var _device = new UPNPService("Flag",flag, flag+700, active, flagdata.Name);	
+	var _service = _device.createService({
+		domain: "www.cytech.com",
+		type: "flag",
+		serviceId: "flag", 
+		version: "1",
+		implementation: {
+			GetCounter: function(inputs){
+				return {RetFlagValue: this.get("Flag")}
+			},
+			GetMaker: function(inputs){
+				return {RetMakerValue: this.get("Maker")}
+			},
+			GetStatus: function(inputs){
+				return {RetStatusValue: this.get("Status")}
+			},
+			GetActive: function(inputs){
+				return {RetActiveValue: this.get("Active")}
+			},
+			SetMaker: function(inputs){
+				debug("Maker Value Set");
+				this.set("Maker", inputs.NewMakerValue);
+				this.notify("Maker");
+				
+			},
+			SetStatus: function(inputs){
+				debug("Status Value Set");
+				thisFlag.requestState(inputs.NewStatusValue);
+			}
+
+		},
+		description: {
+			actions: {
+				GetFlag: {
+					outputs: {
+						RetCounterValue: "Flag"
+					}
+				},
+				GetMaker: {
+					outputs: {
+						RetMakerValue: "Maker"
+					}
+				},
+				GetStatus: {
+					outputs: {
+						RetStatusValue: "Status"
+					}
+				},
+				GetActive: {
+					outputs: {
+						RetActiveValue: "Active"
+					}
+				},				
+				SetMaker: {
+					inputs: {
+						NewMakerValue: "Maker"
+					}
+				},
+				SetStatus: {
+					inputs: {
+						NewStatusValue: "Status"
+					}
+				}	
+			},	
+			variables: {Flag: "int", Status: "boolean", Maker: "boolean", Active: "boolean", }	
+		}	 
+	});
+	debug("Setting up flag:" + flag);
+	_service.set("Status",0);
+	_service.set("Flag",flag);
+	_service.set("Active",false);
+	_service.set("Maker",0);
+
+	this.getFlag = function getFlag() {
+		return _service.get("Flag");
+	}
+	
+	this.setFlag = function setFlag(flag) {
+		_service.set("Flag",flag);
+	}
+	
+	this.getState = function getState() {
+		return _service.get("Status");
+	}
+
+	this.requestState = function requestState(state){
+		var _flag = toHexByte(flag);
+		var _state = "00"
+		if (state=="1") {
+			_state = "01"
+		}
+		debug ("->this.requestState:" + state + "for flag:" + _flag);
+		var commandString = "F!" + _flag + _state;
+		debug("Sending " + commandString + "to alarm");
+		alarm.sendCommand(commandString);
+	}
+
+	this.setStateSilent = function setStateSilent(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Flag " + _service.get("Flag") + " to " + _service.get("Status") + " silently");
+	}
+		
+	this.setState = function setState(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Flag " + _service.get("Flag") + " to " + _service.get("Status"));
+		debug("Maker = " + _service.get("Maker"));
+		if (_service.get("Maker")===1) {
+			debug("")
+			sendIFTTT("Flag",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+		}
+	}
+	
+	this.getDateUpdated = function getDateUpdated () {
+		return _DateUpdated;
+	}
+	
+	this.setMaker = function setMaker(maker) {
+		if (maker===true) {
+			_service.set("Maker",1);
+		} else {
+			_service.set("Maker",0);
+		}
+	}
+	
+	this.getMaker = function getMaker() {
+		return _service.get("Maker");
+	}
+
+}
 // Comfort Main
 function Comfort() {
 	var thisAlarm = this;
@@ -430,7 +703,9 @@ function Comfort() {
 	var poll_state = 0;
 	var _zones = [];;
 	var _outputs = [];
-	var counters = [];
+	var _counters = [];
+	var _flags = [];
+	var _responses = [];
 	var user = "";
 	const stx = String.fromCharCode(3);
 	const etx = String.fromCharCode(13);
@@ -440,37 +715,59 @@ function Comfort() {
 	var _pin;
 	var _pingCounter = 0;
 	var _inputBuffer = "";
-	var _maxzones = (config["maxzones"]) ? parseInt(config["maxzones"],10):96;
-	var _maxoutputs = (config["maxoutputs"]) ? parseInt(config["maxoutputs"],10):96
-	var _maxextendedoutputs = (config["maxextendedoutputs"]) ? parseInt(config["maxextendedoutputs"],10):0
+
+	var _maxzones = 96;
+	var _maxoutputs = 248;
+	var _maxcounters = 254;
+	var _maxflags = 254;
+	var _maxresponses = 254;
+
+	var _zonearray = (config["zones"]) ? config["zones"].split(','):[]
+	var _outputarray = (config["outputs"]) ? config["outputs"].split(','):[]
+	var _counterarray = (config["counters"]) ? config["counters"].split(','):[]
+	var _flagarray = (config["flags"]) ? config["flags"].split(','):[]
+	var _responsearray = (config["responses"]) ? config["responses"].split(','):[]
+
 	var _keepalive = (config["keepalive"]) ? parseInt(config["keepalive"],10):5000
 
-
-
-	debug ("devices z:"+_maxzones+" o:"+ _maxoutputs+" ex:"+_maxextendedoutputs)
+	debug ("devices z:"+_zonearray.length +" o:"+ _outputarray.length + " c:" + _counterarray.length + " f:" + _flagarray.length + " r:" + _responsearray.length)
 
 	// Init Counters
-	for (var counter = 0;counter<256;counter++) {
-		counters[counter]=0;
+	for (var counter = 0;counter <= _maxcounters;counter++) {
+		if (_counterarray.indexOf(counter.toString())>-1) {
+			_counters[counter] = new Counter(counter, alarmConfig.getCounter(counter));
+		} else {
+			_counters[counter] = null;
+		}
+	}
+
+	// Init Flags
+	for (var flag = 1;flag <= _maxflags;flag++) {
+		if (_flagarray.indexOf(flag.toString())>-1) {
+			_flags[flag] = new Flag(flag, alarmConfig.getFlag(flag));
+		} else {
+			_flags[flag] = null;
+		}
 	}
 
 	// Init Zones and Outputs
 	for (var zone = 1; zone <= _maxzones; zone++) {
-		_zones[zone] = new Zone(zone, alarmConfig.getZone(zone));
-		
+		if (_zonearray.indexOf(zone.toString())>-1) {
+			_zones[zone] = new Zone(zone, alarmConfig.getZone(zone));
+		} else {
+			_zones[zone] = null;
+		}
 	}	
 
 	for (var zone = 1; zone <= _maxoutputs; zone++) {
-		
-		_outputs[zone] = new Output(zone, alarmConfig.getOutput(zone));
-	}
-	if (_maxextendedoutputs>0) {
-		_maxextendedoutputs = _maxextendedoutputs + 129;
-
-		for (var zone = 129; zone < _maxextendedoutputs; zone++) {
+		if (_outputarray.indexOf(zone.toString())>-1) {
 			_outputs[zone] = new Output(zone, alarmConfig.getOutput(zone));
+		} else {
+			_outputs[zone] = null;
 		}
 	}
+
+
 	this.getZone = function getZone(zone) {
 		return _zones[zone];
 	}
@@ -591,10 +888,12 @@ function Comfort() {
 				// Bypass Zone Report
 				var zone = parseInt(value.substring(0,2),16);
 				var zonevalue = parseInt(value.substring(2),16);
-				if (zonevalue == 0)  {
-					_zones[zone].setBypass(0);
-				} else {
-					_zones[zone].setBypass(1);
+				if (_zones[zone]) {
+					if (zonevalue == 0)  {
+						_zones[zone].setBypass(0);
+					} else {
+						_zones[zone].setBypass(1);
+					}
 				}
 				break;
 			case 'cc':
@@ -603,13 +902,23 @@ function Comfort() {
 				break;
 			case 'C?':
 				// Counter value Reply to C? Request
+				var counter = parseInt(value.substring(0,2),16);
+				var countervalue = parseInt(value.substring(2,4),16);
+				if (_counters[counter]) {
+					_counters[counter].setState(countervalue);
+				}
 				break;
 			case 'CI':
 				// Learned IR code data reply
 				break;
 			case 'CT':
 				// counter changed report
-				counters[new Buffer(value.substring(0,2),'hex')[0]] = new Buffer(value.substring(2),'hex')[0];
+				var counter = parseInt(value.substring(0,2),16);
+				var countervalue = parseInt(value.substring(2,4),16);
+				debug("Counter Value = " + value.substring(2,4) + ":" + countervalue);
+				if (_counters[counter]) {
+					_counters[counter].setState(countervalue);
+				}
 				break;
 			case 'cm':
 				// Control Menu reply and report
@@ -640,15 +949,38 @@ function Comfort() {
 				break;
 			case 'F?':
 				// reply to Flag Request
+				var flag = parseInt(value.substring(0,2),16);
+				var flagvalue = parseInt(value.substring(2),16);
+				if (_flags[flag]) {
+					_flags[flag].setState(flagvalue);
+				}
+				break;
+			case 'FL':
+				// flag status report
+				var flag = parseInt(value.substring(0,2),16);
+				var flagvalue = parseInt(value.substring(2),16);
+				if (_flags[flag]) {
+					_flags[flag].setState(flagvalue);
+				}
 				break;
 			case 'id':
 				// reply to ID command
+				break;
+			case 'I?':
+				//input activation report
+				var zone = parseInt(value.substring(0,2),16);
+				var zonevalue = parseInt(value.substring(2),16);
+				if (_zones[zone]) {
+					_zones[zone].setState(zonevalue);
+				}
 				break;
 			case 'IP':
 				//input activation report
 				var zone = parseInt(value.substring(0,2),16);
 				var zonevalue = parseInt(value.substring(2),16);
-				_zones[zone].setState(zonevalue);
+				if (_zones[zone]) {
+					_zones[zone].setState(zonevalue);
+				}
 				break;
 			case 'IR':
 				//IR activation report
@@ -690,7 +1022,9 @@ function Comfort() {
 				// Output Activation Report
 				var zone = parseInt(value.substring(0,2),16);
 				var zonevalue = parseInt(value.substring(2),16);
-				_outputs[zone].setState(zonevalue);
+				if (_outputs[zone]) {
+					_outputs[zone].setState(zonevalue);
+				}
 				break;
 			case 'OQ':
 				// Virtual Output status request
@@ -766,7 +1100,12 @@ function Comfort() {
 					client.write(stx + 'b?' + etx);
 					break;
 				case 2:
-					client.write(stx + 'f?'  + etx);
+					//client.write(stx + 'f?'  + etx);
+					for (var flag = 1; flag <= _maxflags;flag++) {
+						if (_flags[flag]) {
+							client.write(stx + "F?" + toHexByte(flag) + etx);
+						}
+					}
 					break;
 				case 3:
 					client.write(stx + 'r?000016' + etx);
@@ -786,6 +1125,12 @@ function Comfort() {
 				case 8:
 					client.write(stx + 'z?' + etx);
 					break;
+				case 9:
+					for (var counter = 0;counter <= _maxcounters;counter++) {
+						if (_counters[counter]) {
+							client.write(stx + "C?" + toHexByte(counter) + etx);
+						}
+					}
 				default:
 					poll_state = 0;
 					poll = false;
@@ -952,7 +1297,7 @@ function ComfortConfiguration(filename) {
 		var result = null
 		comfortjs.Configuration.Zones[0].Zone.forEach(function (item) {
 			if (parseInt(item.$.Number) == zone) {
-				debug ("Requested " + zone + ", sent " + item.$.Number)
+				debug ("Requested Zone " + zone + ", sent " + item.$.Number)
 				result = item.$;
 		}})
 		return result;        
@@ -962,11 +1307,32 @@ function ComfortConfiguration(filename) {
 		var result = null
 		comfortjs.Configuration.Outputs[0].Output.forEach(function (item) {
 			if (parseInt(item.$.Number) == output) {
-				debug ("Requested " + output + ", sent " + item.$.Number)
+				debug ("Requested Output " + output + ", sent " + item.$.Number)
 				result =  item.$;
 		}})	
 		return result;
     }
+
+	this.getCounter = function getCounter(counter) {
+		var result = null
+		comfortjs.Configuration.Counters[0].Counter.forEach(function (item) {
+			if (parseInt(item.$.Number) == counter) {
+				debug ("Requested Counter " + counter + ", sent " + item.$.Number)
+				result =  item.$;
+		}})	
+		return result;
+	}
+
+	this.getFlag = function getFlag(flag){
+		var result = null
+		comfortjs.Configuration.Flags[0].Flag.forEach(function (item) {
+			if (parseInt(item.$.Number) == flag) {
+				debug ("Requested Flag " + flag + ", sent " + item.$.Number)
+				result =  item.$;
+		}})	
+		return result;
+	}
+
 
 }
 
