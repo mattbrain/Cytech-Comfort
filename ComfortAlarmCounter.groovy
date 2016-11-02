@@ -77,6 +77,10 @@ metadata {
     		}
 		}
         
+        valueTile("valueTileMain", "device.level", decoration: "flat", width: 2, height: 2) {
+            state "level", label: '${currentValue}', icon: "st.Kids.kids6"
+        }
+        
         standardTile("refresh", "device.refresh", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Refresh", action:"refresh", icon:"st.secondary.refresh"
         }
@@ -97,8 +101,8 @@ metadata {
             state("off", label:'Off', nextState: "pending", action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#ffffff")
             state("pending", label:'waiting',action:"makerToggle", icon:"st.unknown.zwave.static-controller",backgroundColor:"#ff0000")
         }
-		main "valueTile"
-		details (["valueTile", "on", "off", "up" , "down", "refresh", "maker"])
+		main "valueTileMain"
+		details (["valueTile", "on", "up", "refresh", "off" , "down",  "maker"])
 	}
 }
 
@@ -337,9 +341,9 @@ void off() {
 
 void levelUp() {
 	def level = device.currentValue("level") + 1
-    if (maxLevel) {
-        if (level > maxLevel) {
-            level = maxLevel;
+    if (maxValue) {
+        if (level > maxValue) {
+            level = maxValue;
         } else {
             if (level>255) {
                 level = 255;
@@ -351,9 +355,9 @@ void levelUp() {
 
 void levelDown() {
 	def level = device.currentValue("level") - 1
-    if (minLevel) {
-        if (level < minLevel) {
-            level = minLevel;
+    if (minValue) {
+        if (level < minValue) {
+            level = minValue;
         } else {
             if (level<0) {
                 level = 0;
