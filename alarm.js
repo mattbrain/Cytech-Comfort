@@ -556,6 +556,187 @@ function Counter(counter, counterdata) {
 
 	//}
 }
+
+function AlarmControl() {
+
+	var thisAlarm = this;
+	var _DateUpdated = Date.now();
+	var _device = new UPNPService("Alarm",0, 0, true, "Comfort Alarm");	
+	var _service = _device.createService({
+		domain: "www.cytech.com",
+		type: "alarm",
+		serviceId: "alarm", 
+		version: "1",
+		implementation: {
+			GetSecurityMode: function(inputs){
+				return {RetCounterValue: this.get("SecurityMode")}
+			},
+			GetMaker: function(inputs){
+				return {RetMakerValue: this.get("Maker")}
+			},
+			GetStatus: function(inputs){
+				return {RetStatusValue: this.get("Status")}
+			},
+			GetActive: function(inputs){
+				return {RetActiveValue: this.get("Active")}
+			},
+			SetMaker: function(inputs){
+				debug("Maker Value Set");
+				this.set("Maker", inputs.NewMakerValue);
+				this.notify("Maker");
+				
+			},
+			SetSecurityMode: function(inputs){
+				debug("Security Mode Request");
+				thisAlarm.requestSecurityMode(inputs.NewSecurityModeValue);
+			},
+			SetStatus: function(inputs){
+				debug("Status Value Set");
+				thisCounter.requestState(inputs.NewStatusValue);
+			}
+		},
+		description: {
+			actions: {
+				GetSecurityMode: {
+					outputs: {
+						RetSecurityModeValue: "SecurityMode"
+					}
+				},
+				GetMaker: {
+					outputs: {
+						RetMakerValue: "Maker"
+					}
+				},
+				GetStatus: {
+					outputs: {
+						RetStatusValue: "Status"
+					}
+				},
+				GetActive: {
+					outputs: {
+						RetActiveValue: "Active"
+					}
+				},
+				SetSecurityMode: {
+					inputs: {
+						NewSecurityModeValue: "SecurityMode"
+					}
+				},				
+				SetMaker: {
+					inputs: {
+						NewMakerValue: "Maker"
+					}
+				},
+				SetStatus: {
+					inputs: {
+						NewStatusValue: "Status"
+					}
+				}	
+			},	
+			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", }	
+		}	 
+	});
+	debug("Setting up alarm control");
+	_service.set("Status",0);
+	_service.set("SecurityMode","O");
+	_service.set("Active",false);
+	_service.set("Maker",0);
+
+	this.getSecurityMode = function getSecurityMode() {
+		return _service.get("SecurityMode");
+	}
+
+	this.setSecurityMode = function setSecurityMode(mode) {
+		var _securityMode = ["O","A","N","D","V"]
+		if (_securityMode[mode]) {
+			_service.set("SecurityMode",_securityMode[mode]);
+			_service.notify("SecurityMode");
+		}
+	}
+
+	this.requestSecurityMode = function requestSecurityMode(request) {
+		var _modeLocalRequest = null;
+		var _modeTypeRequest = null;
+		if (request.substring(0,1)=="L") {
+			_modeLocalRequest = "m!";
+		} else if (request.substring(0,1)=="R") {
+			_modeLocalRequest = "M!";
+		}
+		if (request.substring(1,2)=="O") {
+			_modeTypeRequest = "00";
+		} else if (request.substring(1,2)=="A") {
+			_modeTypeRequest = "01";
+		} else if (request.substring(1,2)=="N") {
+			_modeTypeRequest = "02";
+		} else if (request.substring(1,2)=="D") {
+			_modeTypeRequest = "03";
+		} else if (request.substring(1,2)=="V") {
+			_modeTypeRequest = "04";
+		}
+		if ((_modeLocalRequest) && (_modeTypeRequest)) {
+			var _commandString = _modeLocalRequest + _modeTypeRequest + request.substring(2);
+			alarm.sendCommand(_commandString);
+		}
+	}
+
+	this.getState = function getState() {
+		return _service.get("Status");
+	}
+
+	this.requestState = function requestState(state){
+		var _counter = toHexByte(counter)
+		var _state = toHexByte(parseInt(state))
+		debug ("->this.requestState:" + state + "for counter:" + _counter);
+		var commandString = "C!" + _counter + _state;
+		debug("Sending " + commandString + "to alarm");
+		alarm.sendCommand(commandString);
+	}
+
+	this.setStateSilent = function setStateSilent(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status") + " silently");
+	}
+		
+	this.setState = function setState(State) {
+		_service.set("Status", State);
+		_service.set("Active", true);
+		_service.notify("Status");
+		_DateUpdated = Date.now();
+		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status"));
+		debug("Maker = " + _service.get("Maker"));
+		if (_service.get("Maker")===1) {
+			debug("")
+			sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+		}
+	}
+	
+	this.getDateUpdated = function getDateUpdated () {
+		return _DateUpdated;
+	}
+	
+	this.setMaker = function setMaker(maker) {
+		if (maker===true) {
+			_service.set("Maker",1);
+		} else {
+			_service.set("Maker",0);
+		}
+	}
+	
+	this.getMaker = function getMaker() {
+		return _service.get("Maker");
+	}
+
+	//this.requestState = function requestState(state) {
+	//	debug("Requesting "+ state + " on zone " + getZone());
+		//				var commandString = "O!" + this.get("Zone").toInt().toString(16) + "0" + inputs.NewStatusValue;
+		//				debug("Sending " + commandString + "to alarm");
+		//				alarm.sendCommand(commandString);
+
+	//}
+}
 function Flag(flag, flagdata) {
 	var active=true;
 	var thisFlag = this;
@@ -706,6 +887,7 @@ function Comfort() {
 	var _counters = [];
 	var _flags = [];
 	var _responses = [];
+	var _alarmControl = null;
 	var user = "";
 	const stx = String.fromCharCode(3);
 	const etx = String.fromCharCode(13);
@@ -727,6 +909,7 @@ function Comfort() {
 	var _counterarray = (config["counters"]) ? config["counters"].split(','):[]
 	var _flagarray = (config["flags"]) ? config["flags"].split(','):[]
 	var _responsearray = (config["responses"]) ? config["responses"].split(','):[]
+
 
 	var _keepalive = (config["keepalive"]) ? parseInt(config["keepalive"],10):5000
 
@@ -766,6 +949,9 @@ function Comfort() {
 			_outputs[zone] = null;
 		}
 	}
+
+	// Init Alarm Control
+	_alarmControl = new AlarmControl();
 
 
 	this.getZone = function getZone(zone) {
@@ -868,6 +1054,8 @@ function Comfort() {
 				_zones[zone].setAnalogue(zonevalue);
 			case 'AL':
 				// Alarm Type Report
+				var alarmType = parseInt(value.substring(0,2),16);
+				_alarmControl.setState(alarmType);
 				break;
 			case 'AM':
 				// System (Non Detector) Alarm Report
@@ -1029,8 +1217,15 @@ function Comfort() {
 			case 'OQ':
 				// Virtual Output status request
 				break;
+			case 'M?':
+				// Mode change Report
+				var securityMode = parseInt(value.substring(0,2),16);
+				_alarmControl.setSecurityMode(securityMode);
+				break;
 			case 'MD':
 				// Mode Change Report
+				var securityMode = parseInt(value.substring(0,2),16);
+				_alarmControl.setSecurityMode(securityMode);
 				break;
 			case 'PT':
 				// Pulse Activation Report
@@ -1131,6 +1326,9 @@ function Comfort() {
 							client.write(stx + "C?" + toHexByte(counter) + etx);
 						}
 					}
+				case 10:
+					client.write(stx + 'M?'  + etx);
+					break;	
 				default:
 					poll_state = 0;
 					poll = false;
