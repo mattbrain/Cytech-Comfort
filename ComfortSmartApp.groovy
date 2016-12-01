@@ -141,7 +141,7 @@ def addDevices() {
             def masterDevice = getChildDevices()?.find { it.deviceNetworkId == selectedDevice.value.mac }
             if (!masterDevice) {
                 log.debug "Unable to find master device"
-                masterDevice = addChildDevice("mattbrain","ComfortAlarm Bridge:"+now(), selectedDevice.value.mac, selectedDevice?.value.hub, [
+                masterDevice = addChildDevice("mattbrain","ComfortAlarm Bridge", selectedDevice.value.mac, selectedDevice?.value.hub, [
                     "label": "Comfort Bridge",
                 ])
                 masterDevice.setbridgeaddress(selectedDevice.value.networkAddress, selectedDevice.value.deviceAddress)
