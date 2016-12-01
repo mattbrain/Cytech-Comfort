@@ -592,7 +592,11 @@ function AlarmControl() {
 			},
 			SetStatus: function(inputs){
 				debug("Status Value Set");
-				thisCounter.requestState(inputs.NewStatusValue);
+				thisAlarm.requestState(inputs.NewStatusValue);
+			},
+			SetRunResponse: function(inputs){
+				debug("Response Execution Invoked");
+				thisAlarm.invokeResponse(inputs.NewRunResponseValue);
 			}
 		},
 		description: {
@@ -631,9 +635,14 @@ function AlarmControl() {
 					inputs: {
 						NewStatusValue: "Status"
 					}
+				},
+				SetRunResponse: {
+					inputs: {
+						NewRunResponseValue: "RunResponse"
+					}
 				}	
 			},	
-			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", }	
+			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", RunResponse: "string"}	
 		}	 
 	});
 	debug("Setting up alarm control");
@@ -647,11 +656,22 @@ function AlarmControl() {
 	}
 
 	this.setSecurityMode = function setSecurityMode(mode) {
-		var _securityMode = ["O","A","N","D","V"]
+		// O,A,N,D,V relate to Off, Away, Night, Day and Vacation Modes
+		// W = Arming, No Zones Open (Alarm Ready)
+		// X = Arming, Some Zones Open (Alarm Not Ready)
+		// Y,Z = Entry / Exit Delay Started
+		var _securityMode = ["O","A","N","D","V","W","X","Y","Z"]
 		if (_securityMode[mode]) {
 			_service.set("SecurityMode",_securityMode[mode]);
 			_service.notify("SecurityMode");
 		}
+	}
+
+	this.invokeResponse = function invokeResponse(response) {
+		if ((response>=0) && (response<=255)) {
+			var _commandString = "R!" + toHexByte(response);
+			alarm.sendCommand(_commandString);	
+		}	
 	}
 
 	this.requestSecurityMode = function requestSecurityMode(request) {
@@ -677,6 +697,8 @@ function AlarmControl() {
 			var _commandString = _modeLocalRequest + _modeTypeRequest + request.substring(2);
 			alarm.sendCommand(_commandString);
 		}
+		// get an update on the alarm state
+		alarm.sendCommand("a?");
 	}
 
 	this.getState = function getState() {
@@ -1046,6 +1068,8 @@ function Comfort() {
 		switch (operator) {
 			case 'a?':
 				// Alarm Information Reply
+				var alarmType = parseInt(value.substring(0,2),16);
+				_alarmControl.setState(alarmType);
 				break;
 			case 'A?':
 				// Analogue Value Reported
@@ -1128,9 +1152,21 @@ function Comfort() {
 				break;
 			case 'ER':
 				// Alarm Ready / Not Ready Report
+				var ready = parseInt(value.substring(0,2),16);
+				if (ready==0) {
+					_alarmControl.setSecurityMode(5);	
+				} else {
+					_alarmControl.setSecurityMode(6);
+				}
 				break;
 			case 'EX':
 				// Entry / Exit Delay Started Report
+				var ready = parseInt(value.substring(0,2),16);
+				if (ready==0) {
+					_alarmControl.setSecurityMode(7);	
+				} else {
+					_alarmControl.setSecurityMode(8);
+				}
 				break;
 			case 'f?':
 				// reply to query all flags

@@ -30,6 +30,7 @@ metadata {
         command "modeNight"
         command "modeDay"
         command "modeVacation"
+        command "processResponse"
 
 	}
 
@@ -44,11 +45,15 @@ metadata {
 	tiles (scale: 2) {
         standardTile("AlarmMode", "device.AlarmMode", width:3, height:3, canChangeIcon: false) {
             state "offline", label:'Offline', icon:"st.security.alarm.off", backgroundColor:"#ff0000"
-            state "off", label:'Security Off', icon:"st.security.alarm.off", backgroundColor:"#ffffff"
-            state "away", label:'Away Mode Active', icon:"st.security.alarm.on", backgroundColor:"#ffffff"
-            state "night", label:'Night Mode Active', icon:"st.security.alarm.partial", backgroundColor:"#ffffff"
-            state "day", label:"Day Mode Active", icon:"st.security.alarm.partial", backgroundColor:"#ffffff"
-            state "vacation", label:"Vacation Mode Active", icon:"st.security.alarm.on", backgroundColor:"#ffffff"
+            state "off", label:'Security Off', icon:"st.security.alarm.off", backgroundColor:"#00ff00"
+            state "away", label:'Away Mode Active', icon:"st.security.alarm.on", backgroundColor:"#00ff00"
+            state "night", label:'Night Mode Active', icon:"st.security.alarm.partial", backgroundColor:"#00ff00"
+            state "day", label:"Day Mode Active", icon:"st.security.alarm.partial", backgroundColor:"#00ff00"
+            state "vacation", label:"Vacation Mode Active", icon:"st.security.alarm.on", backgroundColor:"#00ff00"
+            state "armOK", label:"Arming Alarm", icon:"st.security.alarm.off",backgroundColor:"#00ff00"
+            state "armWait", label:"Arming Alarm, Zone Active", icon:"st.security.alarm.off",backgroundColor:"#ffa500"
+            state "entryDelay", label:"Entry Delay", icon:"st.security.alarm.on", backgroundColor:"#ffa500"
+            state "exitDelay", label:"Exit Delay", icon:"st.security.alarm.off", backgroundColor:"#ffa500"
         }
 
         standardTile("AlarmState", "device.AlarmState", width:3, height:3, canChangeIcon: false) {
@@ -160,6 +165,14 @@ def processEvent(sid, item, value) {
                 value = "day"
             } else if (value=="V") {
                 value = "vacation"
+            } else if (value=="W") {
+            	value = "armOK"
+            } else if (value=="X") {
+            	value = "armWait"
+            } else if (value=="Y") {
+            	value = "entryDelay"
+            } else if (value=="Z") {
+            	value = "exitDelay"
             }
             log.debug "->processEvent: Setting Alarm Mode  to ${value}"
             sendEvent(name: "AlarmMode", value: value, descriptionText: "Alarm Mode is ${value}")
@@ -310,7 +323,13 @@ void modeVacation() {
 	doAction("SetSecurityMode",[NewSecurityModeValue:"RV"+alarmCode])
 }
 
+void addResponse() {
+	parent.addResponse()
+}
 
+void executeResponse(responseCode) {
+	
+}
 
 
 void makerToggle() {
@@ -355,4 +374,7 @@ def doAction(action, Map body = [InstanceID:0, Speed:1]) {
     )
     //return result
     sendHubCommand(result)
+}
+void processResponse(response) {
+	log.debug "->processResponse"
 }
