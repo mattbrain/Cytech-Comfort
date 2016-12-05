@@ -23,6 +23,7 @@ metadata {
         command "unsubscribe"
         command "addchild"
         command "setbridgeaddress"
+        command "addResponse"
 	}
 
 	simulator {
@@ -44,8 +45,11 @@ metadata {
         standardTile("refresh", "device.switch", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"", action:"refresh.refresh", icon:"st.secondary.refresh"
         }
+        standardTile("addResponse", "device.addResponse", inactiveLabel: false, height: 2,width: 3, decoration: "flat") {
+        	state "default", label:"Add Response Device", action:"addResponse", icon:"st.unknown.zwave.remote-controller"
+		}
 		main ('throughput')
-		details ('throughput','refresh')
+		details ('throughput','refresh', 'addResponse')
 	}
 }
 
@@ -167,4 +171,8 @@ private getSIDFromHeader(header) {
 		sid -= "SID: ".trim()
 	}
     return sid
+}
+
+void addResponse() {
+	parent.addResponse()
 }

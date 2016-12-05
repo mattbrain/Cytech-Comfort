@@ -164,7 +164,9 @@ def addDevices() {
                 	deviceType = "ComfortAlarm Counter"
                 } else if (selectedDevice.value.urn == "urn:www.cytech.com:service:flag:1") {
                 	deviceType = "ComfortAlarm Flag"
-                }    
+                } else if (selectedDevice.value.urn == "urn:www.cytech.com:service:alarm:1") {
+                	deviceType = "ComfortAlarm Control"
+                }
                	if (deviceType != "None") {
                 	log.debug "Creating ${deviceType}: ${selectedDevice.value.ssdpPath}"
                 	
@@ -260,3 +262,19 @@ void processEvent(childId, sid, item, value)	{
     	log.debug "unable to find child device"
     }
 }
+
+void addResponse() {
+	log.debug "->addResponse"
+    addChildDevice("mattbrain", "ComfortAlarm Response", "ComfortAlarm Response:"+now(),location.hubs[0].id)
+}
+
+void processResponse(response) {
+	def controlDevice = getChildDevices()?.find { it.name == "ComfortAlarm Control" }
+    if (controlDevice) {
+    	log.debug "Found ComfortAlarm Controller"
+ 		controlDevice.processResponse(response)
+ 	}
+    else {
+    	log.debug "Unable to find ComfortAlarm Controller"
+    }
+}    
