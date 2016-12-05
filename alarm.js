@@ -669,7 +669,7 @@ function AlarmControl() {
 
 	this.invokeResponse = function invokeResponse(response) {
 		if ((response>=0) && (response<=255)) {
-			var _commandString = "R!" + toHexByte(response);
+			var _commandString = "R!" + toHexByte(parseInt(response,10));
 			alarm.sendCommand(_commandString);	
 		}	
 	}

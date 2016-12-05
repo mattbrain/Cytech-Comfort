@@ -31,7 +31,7 @@ metadata {
 	tiles (scale: 2) {
   	
         standardTile("on", "device.switchon", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Turn On", action:"doOn", icon:"st.illuminance.illuminance.light"
+            state "default", label:"Turn On", action:"on", icon:"st.illuminance.illuminance.light"
         }
         standardTile("off", "device.switchoff", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
             state "default", label:"Turn Off", action:"off", icon:"st.illuminance.illuminance.dark"
@@ -59,12 +59,14 @@ def setOffline() {
 }
 
 void on() {
+	log.debug "doing On action"
 	if (onAction) {
 		parent.processResponse(onAction)
     }
 }
 
 void off() {
+	log.debug "doing Off action"
 	if (offAction) {
     	parent.processResponse(offAction)
     }

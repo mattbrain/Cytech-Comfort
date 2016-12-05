@@ -377,4 +377,5 @@ def doAction(action, Map body = [InstanceID:0, Speed:1]) {
 }
 void processResponse(response) {
 	log.debug "->processResponse"
+    doAction("SetRunResponse",[NewRunResponseValue:response])
 }
