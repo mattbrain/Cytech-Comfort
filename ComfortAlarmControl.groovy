@@ -75,13 +75,13 @@ metadata {
             state "default", label:"Away Mode", action:"modeAway", icon:"st.security.alarm.on"
         }
         standardTile("night", "device.modeNight", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Night Mode", action:"modeOff", icon:"st.security.alarm.partial"
+            state "default", label:"Night Mode", action:"modeNight", icon:"st.security.alarm.partial"
         }
         standardTile("day", "device.modeDay", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Day Mode", action:"modeOff", icon:"st.security.alarm.partial"
+            state "default", label:"Day Mode", action:"modeDay", icon:"st.security.alarm.partial"
         }
         standardTile("vacation", "device.modeVacation", inactiveLabel: false, height: 2, width: 2, decoration: "flat") {
-            state "default", label:"Vacation Mode", action:"modeOff", icon:"st.security.alarm.on"
+            state "default", label:"Vacation Mode", action:"modeVacation", icon:"st.security.alarm.on"
         }
 
         standardTile("maker", "device.maker", height: 2, width: 2, decoration: "flat") {
