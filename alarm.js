@@ -642,7 +642,7 @@ function AlarmControl() {
 					}
 				}	
 			},	
-			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", RunResponse: "string"}	
+			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", RunResponse: "string", Doorbell: "int"}	
 		}	 
 	});
 	debug("Setting up alarm control");
@@ -650,6 +650,8 @@ function AlarmControl() {
 	_service.set("SecurityMode","O");
 	_service.set("Active",false);
 	_service.set("Maker",0);
+	_service.set("Doorbell",0);
+
 
 	this.getSecurityMode = function getSecurityMode() {
 		return _service.get("SecurityMode");
@@ -749,6 +751,15 @@ function AlarmControl() {
 	
 	this.getMaker = function getMaker() {
 		return _service.get("Maker");
+	}
+
+	this.setDoorbell = function setDoorbell(id) {
+		if (num>0) {
+			_service.set("Doorbell", num);
+			_service.notify("Doorbell");
+		}
+		_service.set("Doorbell", 0);
+		_service.notify;
 	}
 
 	//this.requestState = function requestState(state) {
@@ -1137,6 +1148,8 @@ function Comfort() {
 				break;
 			case 'DB':
 				// Doorbell Pressed Report
+				var id = parseInt(value.substring(0,2),16);
+				_alarmControl.setDoorbell(id);
 				break;
 			case 'D*':
 				// Status reply from DSP to DC command
