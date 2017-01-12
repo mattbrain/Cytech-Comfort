@@ -642,7 +642,8 @@ function AlarmControl() {
 					}
 				}	
 			},	
-			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", RunResponse: "string", Doorbell: "int"}	
+			variables: {SecurityMode: "string", Status: "int", Maker: "boolean", Active: "boolean", RunResponse: "string", Doorbell: "int",
+			Siren: "boolean", Strobe: "boolean", AlarmName: "string", ALCode: "string", AQCode: "string", AlarmPriority: "int"}	
 		}	 
 	});
 	debug("Setting up alarm control");
@@ -704,39 +705,90 @@ function AlarmControl() {
 	}
 
 	this.getState = function getState() {
+		alarm.sendCommand("a?")
 		return _service.get("Status");
 	}
-
-	this.requestState = function requestState(state){
-		var _counter = toHexByte(counter)
-		var _state = toHexByte(parseInt(state))
-		debug ("->this.requestState:" + state + "for counter:" + _counter);
-		var commandString = "C!" + _counter + _state;
-		debug("Sending " + commandString + "to alarm");
-		alarm.sendCommand(commandString);
-	}
-
-	this.setStateSilent = function setStateSilent(State) {
-		_service.set("Status", State);
-		_service.set("Active", true);
-		_service.notify("Status");
-		_DateUpdated = Date.now();
-		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status") + " silently");
-	}
 		
-	this.setState = function setState(State) {
-		_service.set("Status", State);
-		_service.set("Active", true);
-		_service.notify("Status");
-		_DateUpdated = Date.now();
-		debug("Setting Counter " + _service.get("Counter") + " to " + _service.get("Status"));
-		debug("Maker = " + _service.get("Maker"));
-		if (_service.get("Maker")===1) {
-			debug("")
-			sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+	this.setStateAQ = function setStateAQ(value) {
+		var alarmTypeNum = parseInt(value.substring(0,2),16);
+		var alarmType = alarmConfig.getAlarmType(alarmTypeNum);
+		if (alarmType) {
+			if (alarmType.SirenTypeName !== "") { 
+				var sirenType = alarmConfig.getSirenTypeByName(alarmType.SirenTypeName);
+				if (sirenType.Bell === "true") {
+					_service.set("Siren",1)
+				} else {
+					_service.set("Siren",0)
+				}
+			} else {
+				_service.set("Siren",0)
+			}	
+			_service.notify("Siren");
+			if (alarmType.Strobe==="true") {
+				_service.set("Strobe",1);
+			} else {
+				_service.set("Strobe",0);
+			}
+			_service.notify("Strobe");
+			_service.set("Status",parseInt(value.substring(2,4),16));
+			_service.notify("Status");
+			_service.set("AQCode",value);
+			_service.notify("AQCode");
+			_service.set("AlarmName",alarmType.Name);
+			_service.notify("AlarmName");
+			_service.set("Active", true);
+			_DateUpdated = Date.now();
+			debug("Setting Alarm " + alarmType.Name);
+			debug("Maker = " + _service.get("Maker"));
+			if (_service.get("Maker")===1) {
+				debug("")
+				sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+			}
+		} else {
+			debug ("Illegal alarmTypeNum " + alarmTypeNum);
 		}
 	}
 	
+	this.setStateAL = function setStateAL(value) {
+		var alarmTypeNum = parseInt(value.substring(0,2),16);
+		var alarmType = alarmConfig.getAlarmType(alarmTypeNum);
+		if (alarmType) {
+			if (alarmType.SirenTypeName !== "") { 
+				var sirenType = alarmConfig.getSirenTypeByName(alarmType.SirenTypeName);
+				if (sirenType.Bell === "true") {
+					_service.set("Siren",1)
+				} else {
+					_service.set("Siren",0)
+				}
+			} else {
+				_service.set("Siren",0)
+			}
+			_service.notify("Siren");
+			if (alarmType.Strobe==="true") {
+				_service.set("Strobe",1);
+			} else {
+				_service.set("Strobe",0);
+			}
+			_service.notify("Strobe");
+			_service.set("Status",parseInt(value.substring(2,4),16));
+			_service.notify("Status");
+			_service.set("ALCode",value);
+			_service.notify("ALCode");
+			_service.set("AlarmName",alarmType.Name);
+			_service.notify("AlarmName");
+			_service.set("Active", true);
+			_DateUpdated = Date.now();
+			debug("Setting Alarm " + alarmType.Name);
+			debug("Maker = " + _service.get("Maker"));
+			if (_service.get("Maker")===1) {
+				debug("")
+				sendIFTTT("Counter",_service,get("Counter"),new Date(_DateUpdated).toISOString());
+			}
+		} else {
+			debug ("Illegal alarmTypeNum " + alarmTypeNum);
+		}
+	}
+
 	this.getDateUpdated = function getDateUpdated () {
 		return _DateUpdated;
 	}
@@ -762,13 +814,6 @@ function AlarmControl() {
 		_service.notify;
 	}
 
-	//this.requestState = function requestState(state) {
-	//	debug("Requesting "+ state + " on zone " + getZone());
-		//				var commandString = "O!" + this.get("Zone").toInt().toString(16) + "0" + inputs.NewStatusValue;
-		//				debug("Sending " + commandString + "to alarm");
-		//				alarm.sendCommand(commandString);
-
-	//}
 }
 function Flag(flag, flagdata) {
 	var active=true;
@@ -1079,8 +1124,8 @@ function Comfort() {
 		switch (operator) {
 			case 'a?':
 				// Alarm Information Reply
-				var alarmType = parseInt(value.substring(0,2),16);
-				_alarmControl.setState(alarmType);
+				//var alarmType = parseInt(value.substring(0,2),16);
+				_alarmControl.setStateAQ(value);
 				break;
 			case 'A?':
 				// Analogue Value Reported
@@ -1089,8 +1134,8 @@ function Comfort() {
 				_zones[zone].setAnalogue(zonevalue);
 			case 'AL':
 				// Alarm Type Report
-				var alarmType = parseInt(value.substring(0,2),16);
-				_alarmControl.setState(alarmType);
+				//var alarmType = parseInt(value.substring(0,2),16);
+				_alarmControl.setStateAL(value);
 				break;
 			case 'AM':
 				// System (Non Detector) Alarm Report
@@ -1580,6 +1625,60 @@ function ComfortConfiguration(filename) {
 		return result;
 	}
 
+	this.getAlarmType = function getAlarmType(alarm) {
+		var result = null;
+		comfortjs.Configuration.AlarmTypes[0].AlarmType.forEach(function (item) {
+			if (parseInt(item.$.Number) == alarm) {		
+				result = item.$; 
+			}
+		})
+		debug ("Requested Alarm" + alarm + ", sent " + result);
+		return result;
+	}
+
+	this.getSoundType = function getSoundType(sound) {
+		var result = null;
+		comfortjs.Configuration.SoundTypes[0].SoundType.forEach(function (item) {
+			if (parseInt(item.$.Number) == sound) {		
+				result = item.$; 
+			}
+		})
+		debug ("Requested Sound" + sound + ", sent " + result);
+		return result;
+	}
+
+	this.getSoundTypeByName = function getSoundTypeByName(sound) {
+		var result = null;
+		comfortjs.Configuration.SoundTypes[0].SoundType.forEach(function (item) {
+			if (item.$.Name == sound) {			
+				result = item.$; 
+			}
+		})
+		debug ("Requested Sound" + sound + ", sent " + result);
+		return result;
+	}
+
+	this.getSirenType = function getSirenType(siren) {
+		var result = null;
+		comfortjs.Configuration.SirenTypes[0].SirenType.forEach(function (item) {
+			if (parseInt(item.$.Number) == siren) {		
+				result = item.$; 
+			}
+		})
+		debug ("Requested Sound" + siren + ", sent " + result);
+		return result;
+	}
+
+	this.getSirenTypeByName = function getSirenTypeByName(siren) {
+		var result = null;
+		comfortjs.Configuration.SirenTypes[0].SirenType.forEach(function (item) {
+			if (item.$.Name === siren) {
+				result = item.$; 
+			}
+		})
+		debug ("Requested Sound" + siren + ", sent " + result);
+		return result;
+	}
 
 }
 
