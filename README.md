@@ -1,5 +1,14 @@
 # Cytech-Comfort
 
+
+## Update ##
+
+This branch is no longer under development by myself.
+
+Future versions will be available from http://www.comfortforums.com/forum136/ which include web management interface and support for a dedicated UCM under development with Cytech
+
+
+
 UPNP / SmartThings  support for the Cytech Comfort system
 
 ## Introduction
