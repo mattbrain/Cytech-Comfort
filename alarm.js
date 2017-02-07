@@ -1574,7 +1574,7 @@ function ComfortConfiguration(filename) {
         var lem = comfortjs.Configuration.Modules[0].$.LEM03 == "true";
 
         if (lem) {
-            return 16;
+            return 8;
         } else {
             return 16 + (16 * slaves);
         }
